@@ -1,0 +1,56 @@
+name: CI-CD to GCP Artifact Registry
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION }}
+  REPO_NAME: mlops-ope2-mock-practice
+  IMAGE_NAME: fraud-api
+  SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SA_KEY }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ env.PROJECT_ID }}
+        service_account_key: ${{ env.SERVICE_ACCOUNT_KEY }}
+        export_default_credentials: true
+
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+    - name: Build Docker image
+      run: |
+        IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+        docker build -t $IMAGE_URI .
+
+    - name: Push Docker image
+      run: |
+        docker push $IMAGE_URI
+
+    # ======================
+    # CML REPORTING STEP
+    # ======================
+    - name: CML Report
+      uses: iterative/cml@v0.12.0
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "### CI/CD Build Status" >> report.md
+        echo "- Docker build & push to Artifact Registry: SUCCESS" >> report.md
+        echo "- Image: $IMAGE_URI" >> report.md
+        cml comment create report.md
+
