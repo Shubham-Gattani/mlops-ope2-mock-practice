@@ -6,11 +6,9 @@ on:
       - main
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: ${{ secrets.GCP_REGION }}
   REPO_NAME: mlops-ope2-mock-practice
   IMAGE_NAME: fraud-api
-  SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SA_KEY }}
 
 jobs:
   build-and-push:
@@ -20,12 +18,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        export_default_credentials: true
+        install_components: '["gke-gcloud-auth-plugin"]'
 
     - name: Configure Docker for Artifact Registry
       run: |
@@ -33,7 +35,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
+        IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
         echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
         docker build -t $IMAGE_URI .
 
@@ -42,11 +44,11 @@ jobs:
         docker push $IMAGE_URI
 
     # ======================
-    # CML REPORTING STEP
+    # CML REPORTING
     # ======================
     - name: Install CML
       run: npm install -g @dvcorg/cml
-    
+
     - name: CML Report
       env:
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,4 +57,3 @@ jobs:
         echo "- Docker build & push to Artifact Registry: SUCCESS" >> report.md
         echo "- Image: $IMAGE_URI" >> report.md
         cml comment create report.md
-
