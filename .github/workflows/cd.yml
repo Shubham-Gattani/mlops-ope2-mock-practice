@@ -43,8 +43,8 @@ jobs:
         docker push $IMAGE_URI
 
     # ----- CML REPORT -----
-    - name: Install CML
-      run: npm install -g @dvcorg/cml
+    - name: Setup CML
+      uses: iterative/setup-cml@v2
     
     - name: CML Report
       env:
