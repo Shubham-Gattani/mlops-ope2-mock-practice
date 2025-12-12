@@ -63,16 +63,13 @@ jobs:
     # -----------------------
     # 🚀 NEW: Deploy to GKE
     # -----------------------
-    - name: Install GKE auth plugin
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
-
     - name: Get GKE Credentials
-      run: |
-        gcloud container clusters get-credentials mlops-fraud-gke \
-          --zone us-central1-a \
-          --project ${{ secrets.GCP_PROJECT_ID }}
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: mlops-fraud-gke
+        location: us-central1-a
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
 
     - name: Update GKE Deployment With New Image
       run: |
