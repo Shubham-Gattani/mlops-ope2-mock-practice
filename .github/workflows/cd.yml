@@ -1,7 +1,8 @@
 name: CI-CD to GCP Artifact Registry
 
 permissions:
-  contents: write  # THIS IS THE KEY FIX
+  contents: write
+
 on:
   push:
     branches:
@@ -44,7 +45,9 @@ jobs:
       run: |
         docker push $IMAGE_URI
 
-    # ----- CML REPORT -----
+    # -----------------------
+    # CML REPORT
+    # -----------------------
     - name: Setup CML
       uses: iterative/setup-cml@v2
     
@@ -56,3 +59,17 @@ jobs:
         echo "- Docker build & push to Artifact Registry: SUCCESS" >> report.md
         echo "- Image: $IMAGE_URI" >> report.md
         cml comment create report.md
+
+    # -----------------------
+    # 🚀 NEW: Deploy to GKE
+    # -----------------------
+    - name: Get GKE Credentials
+      run: |
+        gcloud container clusters get-credentials mlops-fraud-gke \
+          --zone us-central1-a \
+          --project ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Update GKE Deployment With New Image
+      run: |
+        kubectl set image deployment/fraud-api fraud-api=$IMAGE_URI
+        kubectl rollout status deployment/fraud-api
