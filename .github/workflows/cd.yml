@@ -1,5 +1,7 @@
 name: CI-CD to GCP Artifact Registry
 
+permissions:
+  contents: write  # THIS IS THE KEY FIX
 on:
   push:
     branches:
@@ -48,7 +50,7 @@ jobs:
     
     - name: CML Report
       env:
-        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo "### CI/CD Build Status" >> report.md
         echo "- Docker build & push to Artifact Registry: SUCCESS" >> report.md
