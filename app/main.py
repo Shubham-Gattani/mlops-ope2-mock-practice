@@ -58,7 +58,7 @@ app = FastAPI(title="Fraud Detection Service", version="1.0")
 
 @app.get("/")
 def root():
-    return {"message": "Fraud Detection API is running!"}
+    return {"message": "Fraud Detection API is runningssssss!"}
 
 @app.post("/predict")
 def predict(transaction: Transaction):
