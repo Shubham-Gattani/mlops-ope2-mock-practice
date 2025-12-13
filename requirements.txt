@@ -17,3 +17,4 @@ shap
 fairlearn 
 matplotlib 
 seaborn
+locust
