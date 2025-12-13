@@ -84,4 +84,4 @@ jobs:
     - name: Update GKE Deployment With New Image
       run: |
         kubectl set image deployment/fraud-api fraud-api=${{ steps.image_uri.outputs.IMAGE_URI }}
-        kubectl rollout status deployment/fraud-api --timeout=10m
+        kubectl rollout status deployment/fraud-api --timeout=20m
