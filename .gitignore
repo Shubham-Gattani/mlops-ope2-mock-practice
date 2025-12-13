@@ -46,8 +46,13 @@ docker-compose.override.yml
 
 # Data (only versioned via DVC, not Git)
 data/
+models/
 
 # Allow DVC metadata files inside data/
 !data/*.dvc
 !data/**/*.dvc
 /data
+
+
+# MISC
+sa-key.json
