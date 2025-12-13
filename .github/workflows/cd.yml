@@ -2,6 +2,7 @@ name: CI-CD to GCP Artifact Registry
 
 permissions:
   contents: write
+  id-token: write  # ADDED: Required for Google Cloud authentication
 
 on:
   push:
@@ -35,15 +36,23 @@ jobs:
       run: |
         gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
+    - name: Determine image URI
+      id: image_uri  # ADDED: Need to capture output for later steps
+      run: |
+        IMAGE_URI="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:${GITHUB_SHA:0:7}"
+        LATEST_URI="${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest"
+        echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_OUTPUT
+        echo "LATEST_URI=${LATEST_URI}" >> $GITHUB_OUTPUT
+        echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV  # For backward compatibility
+
     - name: Build Docker image
       run: |
-        IMAGE_URI=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
-        echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-        docker build -t $IMAGE_URI .
+        docker build -t ${{ steps.image_uri.outputs.IMAGE_URI }} -t ${{ steps.image_uri.outputs.LATEST_URI }} .
 
     - name: Push Docker image
       run: |
-        docker push $IMAGE_URI
+        docker push ${{ steps.image_uri.outputs.IMAGE_URI }}
+        docker push ${{ steps.image_uri.outputs.LATEST_URI }}
 
     # -----------------------
     # CML REPORT
@@ -55,24 +64,24 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "### CI/CD Build Status" >> report.md
+        echo "### CI/CD Build Status" > report.md
         echo "- Docker build & push to Artifact Registry: SUCCESS" >> report.md
-        echo "- Image: $IMAGE_URI" >> report.md
+        echo "- Image (versioned): ${{ steps.image_uri.outputs.IMAGE_URI }}" >> report.md
+        echo "- Image (latest): ${{ steps.image_uri.outputs.LATEST_URI }}" >> report.md
+        echo "- Commit: ${GITHUB_SHA}" >> report.md
         cml comment create report.md
 
     # -----------------------
-    # 🚀 NEW: Deploy to GKE
+    # 🚀 Deploy to GKE
     # -----------------------
     - name: Get GKE Credentials
       uses: google-github-actions/get-gke-credentials@v1
       with:
         cluster_name: mlops-fraud-gke
-        location: us-central1-a
+        location: us-central1-a  # Make sure this matches your cluster location
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-
 
     - name: Update GKE Deployment With New Image
       run: |
-        kubectl set image deployment/fraud-api fraud-api=$IMAGE_URI
-        kubectl rollout status deployment/fraud-api
-
+        kubectl set image deployment/fraud-api fraud-api=${{ steps.image_uri.outputs.IMAGE_URI }}
+        kubectl rollout status deployment/fraud-api --timeout=5m
