@@ -22,5 +22,10 @@ COPY models/ models/
 # 7. Expose port
 EXPOSE 8200
 
+ENV OTEL_SERVICE_NAME=fraud-api
+ENV OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.default.svc.cluster.local:4318
+ENV OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+
+
 # 8. Start FastAPI server
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
