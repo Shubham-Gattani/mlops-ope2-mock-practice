@@ -50,3 +50,4 @@ data/
 # Allow DVC metadata files inside data/
 !data/*.dvc
 !data/**/*.dvc
+/data
